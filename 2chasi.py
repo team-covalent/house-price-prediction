@@ -20,7 +20,6 @@ def visualize_trend_with_prediction(df, region, future_price):
     plt.ylabel('price')
     plt.grid(True)
 
-    # 미래의 가격 예측을 그래프에 추가
     future_year = len(region_data) + 1
     plt.scatter(future_year, future_price, color='red', label='미래 가격 예측')
     
@@ -49,16 +48,13 @@ def predict_future_price(df, region):
         loss.backward()
         optimizer.step()
 
-    # 미래의 가격 예측
     future_year = len(region_data) + 1
     future_price = model(torch.tensor([[future_year]], dtype=torch.float32)).item()
     return future_price
 
 region = input("지역을 입력하세요: ")
 
-# 미래의 집값 예측
 future_price = predict_future_price(df, region)
 print(f"미래의 집값 예측 (다음 해): {future_price:.2f}만원")
 
-# 시각화
 visualize_trend_with_prediction(df, region, future_price)
