@@ -1,36 +1,27 @@
-import pandas as pd
-import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
+import matplotlib.pyplot as plt
 
-data = {
-    '주소': ['서울', '서울', '서울', '서울', '서울', '서울', '서울', '서울', '서울', '서울'],
-    '가격': [900, 550, 600, 650, 700, 750, 800, 850, 900, 600]
-}
-
-df = pd.DataFrame(data)
-
-def visualize_trend_with_prediction(df, region, future_price):
-    region_data = df[df['주소'] == region]
-
+def visualize_trend_with_prediction(region, period, price, future_price):
+    years = list(range(-period+1, 1))
+    
     plt.figure(figsize=(10, 6))
-    plt.plot(region_data.index, region_data['가격'], marker='o', linestyle='-', label='실제 가격')
+    plt.plot(years, price, marker='o', linestyle='-', label='Current Price')
     plt.title(f'{region} house price')
     plt.xlabel('year')
     plt.ylabel('price')
     plt.grid(True)
 
-    future_year = len(region_data) + 1
-    plt.scatter(future_year, future_price, color='red', label='미래 가격 예측')
+    future_year = 1
+    plt.scatter(future_year, future_price, color='red', label='Future Price')
     
     plt.legend()
     plt.show()
 
-def predict_future_price(df, region):
-    region_data = df[df['주소'] == region]
-
-    X = torch.tensor(region_data.index.values, dtype=torch.float32).view(-1, 1)
-    y = torch.tensor(region_data['가격'].values, dtype=torch.float32).view(-1, 1)
+def predict_future_price(region, period, price):
+    years = list(range(1, period + 1))
+    X = torch.tensor(years, dtype=torch.float32).view(-1, 1)
+    y = torch.tensor(price, dtype=torch.float32).view(-1, 1)
 
     input_size = 1
     output_size = 1
@@ -39,7 +30,7 @@ def predict_future_price(df, region):
     criterion = nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
 
-    num_epochs = 1000
+    num_epochs = 50000
     for epoch in range(num_epochs):
         outputs = model(X)
         loss = criterion(outputs, y)
@@ -48,13 +39,15 @@ def predict_future_price(df, region):
         loss.backward()
         optimizer.step()
 
-    future_year = len(region_data) + 1
+    future_year = 1
     future_price = model(torch.tensor([[future_year]], dtype=torch.float32)).item()
     return future_price
 
 region = input("지역을 입력하세요: ")
+period = int(input("과거 몇년간의 기간을 입력하시겠습니까?: "))
+price = [float(input(f"{period - i}년 전 집값을 입력하세요: ")) for i in range(period)]
 
-future_price = predict_future_price(df, region)
-print(f"미래의 집값 예측 (다음 해): {future_price:.2f}만원")
+future_price = predict_future_price(region, period, price)
+print(f"미래의 집값 예측 ({period}년 후): {future_price:.2f}만원")
 
-visualize_trend_with_prediction(df, region, future_price)
+visualize_trend_with_prediction(region, period, price, future_price)
