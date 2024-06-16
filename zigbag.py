@@ -3,7 +3,6 @@ import aiohttp
 import contextlib
 
 ZIGBAG_API = "https://apis.zigbang.com"
-ZIGBAG_NEXT = "https://www.zigbang.com/_next/data"
 
 
 def content_type(response: Any) -> Any:
