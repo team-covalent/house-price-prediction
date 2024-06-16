@@ -1,3 +1,4 @@
 aiohttp
 torch~=2.3.1+cpu
 matplotlib~=3.9.0
+inquirer~=2.7.0
