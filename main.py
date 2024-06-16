@@ -1,16 +1,20 @@
+import asyncio
+
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
+import inquirer
+import zigbag
 
 
-def visualize_trend_with_prediction(region, period, price, future_price):
+def visualize_trend_with_prediction(period, price, future_price):
     years = list(range(-period + 1, 1))  # 과거 기간 리스트
 
     # 그래프 설정
     plt.figure(figsize=(10, 6))
     plt.plot(years, price, marker="o", linestyle="-", label="Current Price")
-    plt.title(f"{region} House Price")
-    plt.xlabel("Year")
+    plt.title(f"House Price")
+    plt.xlabel("Month")
     plt.ylabel("Price (in 만원)")
     plt.grid(True)
 
@@ -22,9 +26,9 @@ def visualize_trend_with_prediction(region, period, price, future_price):
     plt.show()
 
 
-def predict_future_price(region, period, price):
-    years = list(range(-period + 1, 1))  # 과거 기간 리스트 생성
-    X = torch.tensor(years, dtype=torch.float32).view(-1, 1)  # 년도를 텐서로 변환
+def predict_future_price(period, price):
+    months = list(range(-period + 1, 1))  # 과거 기간 리스트 생성
+    X = torch.tensor(months, dtype=torch.float32).view(-1, 1)  # 월을 텐서로 변환
     y = torch.tensor(price, dtype=torch.float32).view(-1, 1)  # 집값을 텐서로 변환
 
     input_size = 1  # 입력 크기
@@ -53,12 +57,46 @@ def predict_future_price(region, period, price):
     return future_price
 
 
-region = input("지역을 입력하세요: ")
-period = int(input("과거 몇년간의 기간을 입력하시겠습니까?: "))
-price = [float(input(f"{period - i}년 전 집값을 입력하세요: ")) for i in range(period)]
+async def main():
+    print("집값 예측 프로그램")
+    client = zigbag.ZigBagClient()
+    answers = inquirer.prompt(
+        [
+            inquirer.List(
+                "service_type",
+                message="무슨 종류의 집을 검색하시겠습니까?",
+                choices=["아파트"],
+            ),
+        ]
+    )
+    answers["query"] = input("[?] 원하시는 지역명, 지하철, 아파트명을 입력해주세요: ")
+    data = await client.search(answers["query"], answers["service_type"])
+    print("검색 결과 (주변 시설물)")
+    for not_apt, number in zip(data, range(len(data))):
+        if not_apt["type"] != "apartment":
+            print(f"[{number}] <{not_apt['type']}> {not_apt['name']}, {not_apt['hint']}")
 
-future_price = predict_future_price(region, period, price)
-print(f"미래의 집값 예측 (1년 후): {future_price:.2f}만원")
+    answers = inquirer.prompt(
+        [
+            inquirer.List(
+                "room",
+                message="원하시는 아파트를 선택해주세요",
+                choices=[apt["name"] + ", " + apt["description"] for apt in data if apt["type"] == "apartment"],
+            )
+        ]
+    )
+    room_id, region = None, None
+    for apt, number in zip(data, range(len(data))):
+        if apt["type"] == "apartment" and apt["name"] == answers["room"].split(",")[0]:
+            room_id, region = apt["id"], apt["_source"]["local2"]
+            break
 
-# 그래프 시각화
-visualize_trend_with_prediction(region, period, price, future_price)
+    prices_data = await client.get_apart_info(room_id)
+    price = [int(each_price_data["price"]) for each_price_data in prices_data]
+    future_price = predict_future_price(len(price), price)
+    print(f"미래의 집값 예측 (1년 후): {future_price:.2f}만원")
+    visualize_trend_with_prediction(len(price), price, future_price)
+
+
+asyncio.run(main())
+
